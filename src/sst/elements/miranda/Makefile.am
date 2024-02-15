@@ -66,6 +66,13 @@ libmiranda_la_LDFLAGS += $(STAKE_LDFLAGS) $(STAKE_LIB)
 AM_CPPFLAGS += $(STAKE_CPPFLAGS) -DHAVE_STAKE
 endif
 
+if USE_SPATTER
+libmiranda_la_SOURCES += \
+	generators/spatter_patterns.h \
+	generators/spatter_patterns.cc
+AM_CPPFLAGS += $(SPATTER_CPPFLAGS)
+endif
+
 install-exec-hook:
 	$(SST_REGISTER_TOOL) SST_ELEMENT_SOURCE     miranda=$(abs_srcdir)
 	$(SST_REGISTER_TOOL) SST_ELEMENT_TESTS      miranda=$(abs_srcdir)/tests
