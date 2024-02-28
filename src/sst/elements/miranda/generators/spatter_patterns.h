@@ -49,24 +49,29 @@ public:
     SST_ELI_DOCUMENT_PARAMS(
         { "verbose",      "Sets the verbosity of the output", "0" },
         { "length",       "Sets the length of the request", "8" },
-        { "startat",      "Sets the start address of the array", "0" },
-        { "max_address",  "Maximum address allowed for generation", "524288" },
+        { "start_src",    "Sets the start address of the source array", "0" },
+        { "start_dst",    "Sets the start address of the destination array", "0" },
+        { "args",         "Sets the arguments to describe Spatter pattern(s)", "" },
     )
 
 private:
     void count_args(const std::string &args, int32_t &argc);
     void tokenize_args(const std::string &args, const int32_t &argc, char ***argv);
     void update_indices();
+
+    void gather();
+    void scatter();
+    void scatter_gather();
+    void multi_gather();
+    void multi_scatter();
     
-    uint32_t reqLength;
-    uint64_t maxAddr;
-    uint64_t startAddr;
+    uint64_t reqLength;
+    size_t configIdx;
+    size_t countIdx;
+    size_t patternIdx;
 
-    uint64_t configIdx;
-    uint64_t countIdx;
-    uint64_t patternIdx;
-
-    Output*  out;
+    MirandaRequestQueue<GeneratorRequest*>* queue;
+    Output* out;
     
     Spatter::ClArgs cl;
 };
