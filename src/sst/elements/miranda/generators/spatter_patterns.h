@@ -47,17 +47,24 @@ public:
     )
 
     SST_ELI_DOCUMENT_PARAMS(
-        { "verbose",      "Sets the verbosity of the output", "0" },
-        { "length",       "Sets the length of the request", "8" },
-        { "start_src",    "Sets the start address of the source array", "0" },
-        { "start_dst",    "Sets the start address of the destination array", "0" },
-        { "args",         "Sets the arguments to describe Spatter pattern(s)", "" },
+        { "verbose",             "Sets the verbosity of the output", "0" },
+        { "args",                "Sets the arguments to describe Spatter pattern(s)", "" },
+    )
+
+    SST_ELI_DOCUMENT_STATISTICS(
+        { "total_bytes_read",    "Count the total bytes requested by read operations", "bytes", 1 },
+        { "total_bytes_write",   "Count the total bytes requested by write operations", "bytes", 1 },
+        { "req_latency",         "Running total of all latency for all requests", "ns", 2 },
     )
 
 private:
     void count_args(const std::string &args, int32_t &argc);
     void tokenize_args(const std::string &args, const int32_t &argc, char ***argv);
     void update_indices();
+    void print_stats();
+    
+    uint64_t calc_bytes(const Spatter::ConfigurationBase *config);
+    size_t get_pattern_size(const Spatter::ConfigurationBase *config);
 
     void gather();
     void scatter();
@@ -69,6 +76,12 @@ private:
     size_t configIdx;
     size_t countIdx;
     size_t patternIdx;
+    bool configFin;
+    
+    Statistic<uint64_t>* statReadBytes;
+    Statistic<uint64_t>* statWriteBytes;
+    Statistic<uint64_t>* statReqLatency;
+    Statistic<uint64_t>* statTime;
 
     MirandaRequestQueue<GeneratorRequest*>* queue;
     Output* out;

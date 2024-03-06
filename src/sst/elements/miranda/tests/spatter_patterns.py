@@ -17,11 +17,8 @@ gen.addParams({
 	"args" : " ".join(sys.argv[1:]),
 })
 
-# Tell SST what statistics handling we want
-sst.setStatisticLoadLevel(4)
-
 # Enable statistics outputs
-comp_cpu.enableAllStatistics({"type":"sst.AccumulatorStatistic"})
+comp_cpu.enableAllStatistics()
 
 comp_l1cache = sst.Component("l1cache", "memHierarchy.Cache")
 comp_l1cache.addParams({
@@ -34,7 +31,7 @@ comp_l1cache.addParams({
       "prefetcher" : "cassini.StridePrefetcher",
       "debug" : "0",
       "L1" : "1",
-      "cache_size" : "2KB"
+      "cache_size" : "32KB"
 })
 
 # Enable statistics outputs
@@ -43,12 +40,12 @@ comp_l1cache.enableAllStatistics({"type":"sst.AccumulatorStatistic"})
 comp_memctrl = sst.Component("memory", "memHierarchy.MemController")
 comp_memctrl.addParams({
       "clock" : "1GHz",
-      "addr_range_end" : 512 * 1024 * 1024 - 1
+      "addr_range_end" : 4096 * 1024 * 1024 - 1
 })
 memory = comp_memctrl.setSubComponent("backend", "memHierarchy.simpleMem")
 memory.addParams({
-      "access_time" : "1000 ns",
-      "mem_size" : "512MiB",
+      "access_time" : "100 ns",
+      "mem_size" : "4096MiB",
 })
 
 # Define the simulation links

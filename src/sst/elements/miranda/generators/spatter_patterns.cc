@@ -34,10 +34,15 @@ void SpatterPatternsGenerator::build(Params& params) {
 	
 	out = new Output("SpatterPatternsGenerator[@p:@l]: ", verbose, 0, Output::STDOUT);
 	
-	reqLength   = params.find<uint64_t>("length", sizeof(double));
-	configIdx   = 0;
-	countIdx    = 0;
-	patternIdx  = 0;
+	reqLength  = sizeof(double);
+	configIdx  = 0;
+	countIdx   = 0;
+	patternIdx = 0;
+	configFin  = false;
+	
+	statReadBytes  = registerStatistic<uint64_t>( "total_bytes_read" );
+	statWriteBytes = registerStatistic<uint64_t>( "total_bytes_write" );
+	statReqLatency = registerStatistic<uint64_t>( "req_latency" );
 	
 	// Convert arguments to compatible format before parsing
 	count_args(args, argc);
@@ -57,6 +62,11 @@ void SpatterPatternsGenerator::build(Params& params) {
 	if (res != 0) {
 		out->fatal(CALL_INFO, -1, "Failed to parse provided arguments\n");
 	}
+
+	out->output("\n%-15s", "config");
+	out->output("%-15s",   "bytes");
+	out->output("%-15s",   "time(s)");
+	out->output("%-15s\n", "bw(MB/s)");
 }
 
 SpatterPatternsGenerator::~SpatterPatternsGenerator() {
@@ -64,33 +74,46 @@ SpatterPatternsGenerator::~SpatterPatternsGenerator() {
 }
 
 void SpatterPatternsGenerator::generate(MirandaRequestQueue<GeneratorRequest*>* q) {
-	const Spatter::ConfigurationBase *config = cl.configs[configIdx].get();
-	
-	queue  = q;
-	
-	if (config->kernel.compare("gather") == 0) {
-		gather();
-	} else if (config->kernel.compare("scatter") == 0) {
-		scatter();
-	} else if (config->kernel.compare("sg") == 0) {
-		scatter_gather();
-	} else if (config->kernel.compare("multigather") == 0) {
-		multi_gather();
-	} else if (config->kernel.compare("multiscatter") == 0) {
-		multi_scatter();
-	} else {
-		out->fatal(CALL_INFO, -1, "Invalid kernel: %s\n", config->kernel.c_str());
+	if (!configFin) {
+		const Spatter::ConfigurationBase *config = cl.configs[configIdx].get();
+		
+		queue  = q;
+		
+		if (config->kernel.compare("gather") == 0) {
+			gather();
+		} else if (config->kernel.compare("scatter") == 0) {
+			scatter();
+		} else if (config->kernel.compare("sg") == 0) {
+			scatter_gather();
+		} else if (config->kernel.compare("multigather") == 0) {
+			multi_gather();
+		} else if (config->kernel.compare("multiscatter") == 0) {
+			multi_scatter();
+		} else {
+			out->fatal(CALL_INFO, -1, "Invalid kernel: %s\n", config->kernel.c_str());
+		}
+		
+		update_indices();
 	}
-	
-	update_indices();
 }
 
 bool SpatterPatternsGenerator::isFinished() {
+	if (configFin) { // Check if the last config has finished executing
+		const Spatter::ConfigurationBase *prev_config = cl.configs[configIdx-1].get();
+		uint64_t stat_bytes = calc_bytes(prev_config);
+		size_t pattern_size = get_pattern_size(prev_config);
+		
+		if (stat_bytes == (cl.configs[configIdx-1]->count * pattern_size * reqLength)) {
+			print_stats();
+			configFin = false;
+		}
+	}
+	
 	return (configIdx == cl.configs.size());
 }
 
 void SpatterPatternsGenerator::completed() {
-
+	out->output("\n");
 }
 
 /**
@@ -137,24 +160,46 @@ void SpatterPatternsGenerator::tokenize_args(const std::string &args, const int3
 }
 
 /**
+   * @brief Calculate the number of bytes read or written by memory requests
+   *
+   * @param config Run config used to determine the kernel type
+   * @return Number of bytes read or written by memory requests
+   */
+uint64_t SpatterPatternsGenerator::calc_bytes(const Spatter::ConfigurationBase *config) {
+	if (config->kernel.compare("gather") == 0 || config->kernel.compare("multigather") == 0) {
+		return statReadBytes->getCollectionCount() * reqLength;
+	}
+	
+	return statWriteBytes->getCollectionCount() * reqLength;
+}
+
+/**
+   * @brief Return the number of elements in the pattern(s)
+   *
+   * @param config Run config used to determine the kernel type
+   * @return Number of elements in the pattern(s)
+   */
+size_t SpatterPatternsGenerator::get_pattern_size(const Spatter::ConfigurationBase *config) {	
+	if (config->kernel.compare("sg") == 0) {
+		return config->pattern_scatter.size();
+	}
+	
+	return config->pattern.size();
+}
+
+/**
    * @brief Update the pattern, count, and config indices
    *
    */
 void SpatterPatternsGenerator::update_indices() {
 	const Spatter::ConfigurationBase *config = cl.configs[configIdx].get();
-	size_t pattern_size = 0;
-	
-	if (config->kernel.compare("sg") == 0) {
-		assert(config->pattern_scatter.size() == config->pattern_gather.size());
-		pattern_size = config->pattern_scatter.size();
-	} else {
-		pattern_size = config->pattern.size();
-	}
+	size_t pattern_size = get_pattern_size(config);
 	
 	if (patternIdx == pattern_size - 1) {
 		patternIdx = 0;
 		
 		if (countIdx == config->count - 1) {
+			configFin = true;
 			countIdx = 0;
 			
 			++configIdx;
@@ -167,6 +212,35 @@ void SpatterPatternsGenerator::update_indices() {
 }
 
 /**
+   * @brief Output the statistics for the previous Spatter pattern
+   *
+   */
+void SpatterPatternsGenerator::print_stats() {
+	const Spatter::ConfigurationBase *config = cl.configs[configIdx-1].get();
+	uint64_t stat_bytes = calc_bytes(config);
+	
+	double latency_seconds;
+	double bandwidth;
+	
+	// Convert request latency from nanoseconds to seconds
+	latency_seconds = statReqLatency->getCollectionCount() / 1'000'000'000.0;
+	
+	// Convert bytes to megabytes for calculation
+	bandwidth = (stat_bytes / 1'000'000.0) / latency_seconds;
+	
+	
+	out->output("%-15lu",    config->id);
+	out->output("%-15lu",    stat_bytes);
+	out->output("%-15g",     latency_seconds);
+	out->output("%-15.2f\n", bandwidth);
+	
+	
+	statReadBytes->setCollectionCount(0);
+	statWriteBytes->setCollectionCount(0);
+	statReqLatency->setCollectionCount(0);
+}
+
+/**
    * @brief Generate a memory request for a Gather pattern
    *
    */
@@ -176,7 +250,7 @@ void SpatterPatternsGenerator::gather() {
 	// Source buffer => sparse buffer, destination buffer => dense buffer
 	uint64_t start_src  = 0;
 	uint64_t src_offset = config->pattern[patternIdx] + config->delta * countIdx;
-
+	
 	queue->push_back(new MemoryOpRequest((start_src + src_offset), reqLength, READ));
 }
 
@@ -190,7 +264,7 @@ void SpatterPatternsGenerator::scatter() {
 	// Source buffer => dense buffer, destination buffer => sparse buffer
 	uint64_t start_dst  = config->dense.size();
 	uint64_t dst_offset = config->pattern[patternIdx] + config->delta * countIdx;
-
+	
 	queue->push_back(new MemoryOpRequest(start_dst + dst_offset, reqLength, WRITE));
 }
 
@@ -226,7 +300,7 @@ void SpatterPatternsGenerator::multi_gather() {
 	// Source buffer => sparse buffer, destination buffer => dense buffer
 	uint64_t start_src  = 0;
 	uint64_t src_offset = config->pattern[patternIdx] + config->delta * countIdx;
-
+	
 	queue->push_back(new MemoryOpRequest(start_src + src_offset, reqLength, READ));
 }
 
@@ -240,6 +314,6 @@ void SpatterPatternsGenerator::multi_scatter() {
 	// Source buffer => dense buffer, destination buffer => sparse buffer
 	uint64_t start_dst  = config->dense.size();
 	uint64_t dst_offset = config->pattern[patternIdx] + config->delta * countIdx;
-
+	
 	queue->push_back(new MemoryOpRequest(start_dst + dst_offset, reqLength, WRITE));
 }
