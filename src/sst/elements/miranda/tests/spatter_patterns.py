@@ -15,6 +15,8 @@ gen = comp_cpu.setSubComponent("generator", "miranda.SpatterPatternsGenerator")
 gen.addParams({
 	"verbose" : 0,
 	"args" : " ".join(sys.argv[1:]),
+	"warmup_runs" : 10,
+	"only_warmup_first" : 1,
 })
 
 # Enable statistics outputs

@@ -49,12 +49,15 @@ public:
     SST_ELI_DOCUMENT_PARAMS(
         { "verbose",             "Sets the verbosity of the output", "0" },
         { "args",                "Sets the arguments to describe Spatter pattern(s)", "" },
+        { "warmup_runs",         "Sets the number of warm-up runs", "10" },
+        { "only_warmup_first",   "Only warm-up before first config", "0" },
     )
 
     SST_ELI_DOCUMENT_STATISTICS(
         { "total_bytes_read",    "Count the total bytes requested by read operations", "bytes", 1 },
         { "total_bytes_write",   "Count the total bytes requested by write operations", "bytes", 1 },
         { "req_latency",         "Running total of all latency for all requests", "ns", 2 },
+        { "cycles",              "Cycles executed", "cycles", 1 }
     )
 
 private:
@@ -72,16 +75,20 @@ private:
     void multi_gather();
     void multi_scatter();
     
-    uint64_t reqLength;
+    uint32_t warmupRuns;
+    uint32_t reqLength;
     size_t configIdx;
     size_t countIdx;
     size_t patternIdx;
+    size_t warmupIdx;
     bool configFin;
+    bool warmupFin;
+    bool warmupAll;
     
     Statistic<uint64_t>* statReadBytes;
     Statistic<uint64_t>* statWriteBytes;
     Statistic<uint64_t>* statReqLatency;
-    Statistic<uint64_t>* statTime;
+    Statistic<uint64_t>* statCycles;
 
     MirandaRequestQueue<GeneratorRequest*>* queue;
     Output* out;

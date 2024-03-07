@@ -34,15 +34,24 @@ void SpatterPatternsGenerator::build(Params& params) {
 	
 	out = new Output("SpatterPatternsGenerator[@p:@l]: ", verbose, 0, Output::STDOUT);
 	
+	warmupRuns = params.find<uint32_t>("warmup_runs", 10);
 	reqLength  = sizeof(double);
 	configIdx  = 0;
 	countIdx   = 0;
 	patternIdx = 0;
+	warmupIdx  = 0;
 	configFin  = false;
+	warmupFin  = (warmupRuns == 0);
+	warmupAll  = !params.find<bool>("only_warmup_first", false);
+	
+	if (warmupRuns < 0) {
+		out->fatal(CALL_INFO, -1, "Value for warmup_runs must be greater than or equal to zero\n");
+	}
 	
 	statReadBytes  = registerStatistic<uint64_t>( "total_bytes_read" );
 	statWriteBytes = registerStatistic<uint64_t>( "total_bytes_write" );
 	statReqLatency = registerStatistic<uint64_t>( "req_latency" );
+	statCycles     = registerStatistic<uint64_t>( "cycles" );
 	
 	// Convert arguments to compatible format before parsing
 	count_args(args, argc);
@@ -62,11 +71,13 @@ void SpatterPatternsGenerator::build(Params& params) {
 	if (res != 0) {
 		out->fatal(CALL_INFO, -1, "Failed to parse provided arguments\n");
 	}
-
+	
 	out->output("\n%-15s", "config");
 	out->output("%-15s",   "bytes");
 	out->output("%-15s",   "time(s)");
-	out->output("%-15s\n", "bw(MB/s)");
+	out->output("%-15s",   "bw(MB/s)");
+	out->output("%-15s",   "cycles");
+	out->output("%-15s\n", "time(s)/cycles");
 }
 
 SpatterPatternsGenerator::~SpatterPatternsGenerator() {
@@ -98,13 +109,33 @@ void SpatterPatternsGenerator::generate(MirandaRequestQueue<GeneratorRequest*>* 
 }
 
 bool SpatterPatternsGenerator::isFinished() {
-	if (configFin) { // Check if the last config has finished executing
+	if (configFin && warmupFin) {
 		const Spatter::ConfigurationBase *prev_config = cl.configs[configIdx-1].get();
 		uint64_t stat_bytes = calc_bytes(prev_config);
 		size_t pattern_size = get_pattern_size(prev_config);
 		
-		if (stat_bytes == (cl.configs[configIdx-1]->count * pattern_size * reqLength)) {
-			print_stats();
+		if (warmupIdx != 0) { // Check if the warm-up runs just completed
+			stat_bytes /= warmupRuns;
+		}
+		
+		// Check if the last config has finished executing requests
+		if (stat_bytes == (prev_config->count * pattern_size * reqLength)) {
+			if (warmupIdx != 0) { // Check if the warm-up runs just completed
+				warmupIdx = 0;
+				--configIdx;
+			} else {
+				print_stats();
+				
+				if (warmupAll) {
+					warmupFin = (warmupRuns == 0);
+				}
+			}
+			
+			statReadBytes->setCollectionCount(0);
+			statWriteBytes->setCollectionCount(0);
+			statReqLatency->setCollectionCount(0);
+			statCycles->setCollectionCount(0);
+			
 			configFin = false;
 		}
 	}
@@ -179,7 +210,7 @@ uint64_t SpatterPatternsGenerator::calc_bytes(const Spatter::ConfigurationBase *
    * @param config Run config used to determine the kernel type
    * @return Number of elements in the pattern(s)
    */
-size_t SpatterPatternsGenerator::get_pattern_size(const Spatter::ConfigurationBase *config) {	
+size_t SpatterPatternsGenerator::get_pattern_size(const Spatter::ConfigurationBase *config) {
 	if (config->kernel.compare("sg") == 0) {
 		return config->pattern_scatter.size();
 	}
@@ -199,10 +230,20 @@ void SpatterPatternsGenerator::update_indices() {
 		patternIdx = 0;
 		
 		if (countIdx == config->count - 1) {
-			configFin = true;
 			countIdx = 0;
 			
-			++configIdx;
+			if (!warmupFin) {
+				if (warmupIdx == warmupRuns - 1) { // Check if the warm-up runs just completed
+					warmupFin = true;
+				} else {
+					++warmupIdx;
+				}
+			}
+			
+			if (warmupFin) {
+				configFin = true;
+				++configIdx;
+			}
 		} else {
 			++countIdx;
 		}
@@ -221,6 +262,7 @@ void SpatterPatternsGenerator::print_stats() {
 	
 	double latency_seconds;
 	double bandwidth;
+	double time_per_cycle;
 	
 	// Convert request latency from nanoseconds to seconds
 	latency_seconds = statReqLatency->getCollectionCount() / 1'000'000'000.0;
@@ -228,16 +270,14 @@ void SpatterPatternsGenerator::print_stats() {
 	// Convert bytes to megabytes for calculation
 	bandwidth = (stat_bytes / 1'000'000.0) / latency_seconds;
 	
+	time_per_cycle = latency_seconds / statCycles->getCollectionCount();
 	
-	out->output("%-15lu",    config->id);
-	out->output("%-15lu",    stat_bytes);
-	out->output("%-15g",     latency_seconds);
-	out->output("%-15.2f\n", bandwidth);
-	
-	
-	statReadBytes->setCollectionCount(0);
-	statWriteBytes->setCollectionCount(0);
-	statReqLatency->setCollectionCount(0);
+	out->output("%-15lu",  config->id);
+	out->output("%-15lu",  stat_bytes);
+	out->output("%-15g",   latency_seconds);
+	out->output("%-15.2f", bandwidth);
+	out->output("%-15lu",  statCycles->getCollectionCount());
+	out->output("%-15g\n", time_per_cycle);
 }
 
 /**
