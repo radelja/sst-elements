@@ -70,7 +70,8 @@ if USE_SPATTER
 libmiranda_la_SOURCES += \
 	generators/spatter_patterns.h \
 	generators/spatter_patterns.cc
-AM_CPPFLAGS += $(SPATTER_CPPFLAGS)
+libmiranda_la_LDFLAGS += --static $(SPATTER_LDFLAGS) $(SPATTER_LIB)
+AM_CPPFLAGS += $(SPATTER_CPPFLAGS) -DHAVE_SPATTER
 endif
 
 install-exec-hook:
