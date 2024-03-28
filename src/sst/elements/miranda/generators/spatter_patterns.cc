@@ -70,6 +70,10 @@ void SpatterPatternsGenerator::build(Params& params) {
 	
 	if (res != 0) {
 		out->fatal(CALL_INFO, -1, "Failed to parse provided arguments\n");
+	} else {
+		std::ostringstream oss;
+		oss << cl;
+		out->output("\n%s", oss.str().c_str());
 	}
 	
 	out->output("\n%-15s", "config");
