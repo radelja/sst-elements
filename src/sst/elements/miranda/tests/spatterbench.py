@@ -11,7 +11,7 @@ comp_cpu.addParams({
 	"printStats" : 1,
 })
 
-gen = comp_cpu.setSubComponent("generator", "miranda.SpatterPatternsGenerator")
+gen = comp_cpu.setSubComponent("generator", "miranda.SpatterBenchGenerator")
 gen.addParams({
 	"verbose" : 2,
 	"args" : " ".join(sys.argv[1:]),

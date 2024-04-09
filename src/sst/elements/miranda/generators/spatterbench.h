@@ -14,8 +14,8 @@
 // distribution.
 
 
-#ifndef _H_SST_MIRANDA_SPATTER_PATTERNS_GEN
-#define _H_SST_MIRANDA_SPATTER_PATTERNS_GEN
+#ifndef _H_SST_MIRANDA_SPATTER_BENCH_GEN
+#define _H_SST_MIRANDA_SPATTER_BENCH_GEN
 
 #include <sst/elements/miranda/mirandaGenerator.h>
 #include <sst/core/output.h>
@@ -27,20 +27,20 @@
 namespace SST {
 namespace Miranda {
 
-class SpatterPatternsGenerator : public RequestGenerator {
+class SpatterBenchGenerator : public RequestGenerator {
 
 public:
-    SpatterPatternsGenerator( ComponentId_t id, Params& params );
+    SpatterBenchGenerator( ComponentId_t id, Params& params );
     void build(Params& params);
-    ~SpatterPatternsGenerator();
+    ~SpatterBenchGenerator();
     void generate(MirandaRequestQueue<GeneratorRequest*>* q);
     bool isFinished();
     void completed();
 
     SST_ELI_REGISTER_SUBCOMPONENT(
-        SpatterPatternsGenerator,
+        SpatterBenchGenerator,
         "miranda",
-        "SpatterPatternsGenerator",
+        "SpatterBenchGenerator",
         SST_ELI_ELEMENT_VERSION(1,0,0),
         "Creates a stream of gather/scatter operations based on a Spatter pattern",
         SST::Miranda::RequestGenerator
@@ -65,7 +65,7 @@ private:
     void tokenize_args(const std::string &args, const int32_t &argc, char ***argv);
     void update_indices();
     void print_stats();
-    
+
     uint64_t calc_bytes(const Spatter::ConfigurationBase *config);
     size_t get_pattern_size(const Spatter::ConfigurationBase *config);
 
@@ -74,7 +74,7 @@ private:
     void scatter_gather();
     void multi_gather();
     void multi_scatter();
-    
+
     uint32_t warmupRuns;
     uint32_t reqLength;
     size_t configIdx;
@@ -84,7 +84,7 @@ private:
     bool configFin;
     bool warmupFin;
     bool warmupAll;
-    
+
     Statistic<uint64_t>* statReadBytes;
     Statistic<uint64_t>* statWriteBytes;
     Statistic<uint64_t>* statReqLatency;
@@ -92,7 +92,7 @@ private:
 
     MirandaRequestQueue<GeneratorRequest*>* queue;
     Output* out;
-    
+
     Spatter::ClArgs cl;
 };
 
