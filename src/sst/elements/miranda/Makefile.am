@@ -70,7 +70,10 @@ if USE_SPATTER
 libmiranda_la_SOURCES += \
 	generators/spatterbench.h \
 	generators/spatterbench.cc
-libmiranda_la_LDFLAGS += --static $(SPATTER_LDFLAGS) $(SPATTER_LIB)
+EXTRA_DIST += \
+	tests/spatterbench.py \
+	tests/refFiles/test_miranda_spatterbench.out
+libmiranda_la_LDFLAGS += $(SPATTER_LDFLAGS) $(SPATTER_LIB)
 AM_CPPFLAGS += $(SPATTER_CPPFLAGS) -DHAVE_SPATTER
 endif
 
