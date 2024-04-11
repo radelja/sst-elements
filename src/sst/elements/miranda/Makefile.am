@@ -73,7 +73,7 @@ libmiranda_la_SOURCES += \
 EXTRA_DIST += \
 	tests/spatterbench.py \
 	tests/refFiles/test_miranda_spatterbench.out
-libmiranda_la_LDFLAGS += $(SPATTER_LDFLAGS) $(SPATTER_LIB)
+libmiranda_la_LDFLAGS += $(SPATTER_LDFLAGS) $(SPATTER_LIB) -Wl,-R$(SPATTER_LIBDIR)
 AM_CPPFLAGS += $(SPATTER_CPPFLAGS) -DHAVE_SPATTER
 endif
 

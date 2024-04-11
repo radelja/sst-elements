@@ -19,7 +19,7 @@ AC_DEFUN([SST_CHECK_SPATTER],
        SPATTER_LDFLAGS="-L$with_spatter/src/Spatter -L$with_spatter/src/"
        LDFLAGS="$SPATTER_LDFLAGS $AM_LDFLAGS $LDFLAGS"
        SPATTER_LIB="-lSpatter"
-       SPATTER_LIBDIR="$with_spatter"],
+       SPATTER_LIBDIR="$with_spatter/src/Spatter/"],
       [SPATTER_CXXFLAGS=
        SPATTER_CPPFLAGS=
        SPATTER_LDFLAGS=
