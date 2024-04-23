@@ -317,6 +317,7 @@ void SpatterBenchGenerator::gather() {
 	uint64_t start_src  = 0;
 	uint64_t src_offset = config->pattern[patternIdx] + config->delta * countIdx;
 
+	out->verbose(CALL_INFO, 8, 0, "Issuing READ request for address %" PRIu64 "\n", start_src + src_offset);
 	queue->push_back(new MemoryOpRequest((start_src + src_offset), reqLength, READ));
 }
 
@@ -331,6 +332,7 @@ void SpatterBenchGenerator::scatter() {
 	uint64_t start_dst  = config->sparse.size();
 	uint64_t dst_offset = config->pattern[patternIdx] + config->delta * countIdx;
 
+	out->verbose(CALL_INFO, 8, 0, "Issuing WRITE request for address %" PRIu64 "\n", start_dst + dst_offset);
 	queue->push_back(new MemoryOpRequest(start_dst + dst_offset, reqLength, WRITE));
 }
 
@@ -354,7 +356,10 @@ void SpatterBenchGenerator::scatter_gather() {
 
 	write_req->addDependency(read_req->getRequestID());
 
+	out->verbose(CALL_INFO, 8, 0, "Issuing READ request for address %" PRIu64 "\n", start_src + src_offset);
 	queue->push_back(read_req);
+
+	out->verbose(CALL_INFO, 8, 0, "Issuing WRITE request for address %" PRIu64 "\n", start_dst + dst_offset);
 	queue->push_back(write_req);
 }
 
@@ -369,6 +374,7 @@ void SpatterBenchGenerator::multi_gather() {
 	uint64_t start_src  = 0;
 	uint64_t src_offset = config->pattern[config->pattern_gather[patternIdx]] + config->delta * countIdx;
 
+	out->verbose(CALL_INFO, 8, 0, "Issuing READ request for address %" PRIu64 "\n", start_src + src_offset);
 	queue->push_back(new MemoryOpRequest(start_src + src_offset, reqLength, READ));
 }
 
@@ -383,5 +389,6 @@ void SpatterBenchGenerator::multi_scatter() {
 	uint64_t start_dst  = config->dense.size();
 	uint64_t dst_offset = config->pattern[config->pattern_scatter[patternIdx]] + config->delta * countIdx;
 
+	out->verbose(CALL_INFO, 8, 0, "Issuing WRITE request for address %" PRIu64 "\n", start_dst + dst_offset);
 	queue->push_back(new MemoryOpRequest(start_dst + dst_offset, reqLength, WRITE));
 }
