@@ -7,16 +7,16 @@ sst.setProgramOption("timebase", "1ps")
 # Define the simulation components
 comp_cpu = sst.Component("cpu", "miranda.BaseCPU")
 comp_cpu.addParams({
-	"verbose" : 0,
-	"printStats" : 1,
+    "verbose" : 0,
+    "printStats" : 1,
 })
 
 gen = comp_cpu.setSubComponent("generator", "miranda.SpatterBenchGenerator")
 gen.addParams({
-	"verbose" : 2,
-	"args" : " ".join(sys.argv[1:]),
-	"warmup_runs" : 10,
-	"only_warmup_first" : 1,
+    "verbose" : 2,
+    "args" : " ".join(sys.argv[1:]),
+    "warmup_runs" : 10,
+    "only_warmup_first" : 1,
 })
 
 # Enable statistics outputs

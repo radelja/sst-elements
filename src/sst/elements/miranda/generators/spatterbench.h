@@ -20,9 +20,9 @@
 #include <sst/elements/miranda/mirandaGenerator.h>
 #include <sst/core/output.h>
 
-#include <Spatter/Input.hh>
-
 #include <queue>
+
+#include <Spatter/Input.hh>
 
 namespace SST {
 namespace Miranda {
@@ -61,19 +61,19 @@ public:
     )
 
 private:
-    void count_args(const std::string &args, int32_t &argc);
-    void tokenize_args(const std::string &args, const int32_t &argc, char ***argv);
-    void update_indices();
-    void print_stats();
+    void countArgs(const std::string &args, int32_t &argc);
+    void tokenizeArgs(const std::string &args, const int32_t &argc, char ***argv);
+    void updateIndices();
+    void outputStats();
 
-    uint64_t calc_bytes(const Spatter::ConfigurationBase *config);
-    size_t get_pattern_size(const Spatter::ConfigurationBase *config);
+    uint64_t calcBytes(const Spatter::ConfigurationBase *config);
+    size_t getPatternSize(const Spatter::ConfigurationBase *config);
 
     void gather();
     void scatter();
-    void scatter_gather();
-    void multi_gather();
-    void multi_scatter();
+    void scatterGather();
+    void multiGather();
+    void multiScatter();
 
     uint32_t warmupRuns;
     uint32_t reqLength;
@@ -93,7 +93,7 @@ private:
     MirandaRequestQueue<GeneratorRequest*>* queue;
     Output* out;
 
-    Spatter::ClArgs cl;
+    Spatter::ClArgs configList;
 };
 
 }
